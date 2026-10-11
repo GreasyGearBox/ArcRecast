@@ -6,6 +6,10 @@
 
 ArcRecast is a clean, updated ability recast tracker with a separate alert window that briefly displays the names of abilities as they become available.
 
+## Preview
+
+![ArcRecast Preview](images/arcrecast-preview.png)
+
 ## Features
 
 - **Cooldown Tracker:** Displays ability names, countdown timers, and colored bars representing the time remaining on each cooldown.
