@@ -8,7 +8,9 @@ ArcRecast is a clean, updated ability recast tracker with a separate alert windo
 
 ## Preview
 
-![ArcRecast Preview](images/arcrecast-preview.png)
+<p align="center">
+  <img src="https://i.imgur.com/Lgeegi9.png" alt="ArcRecast Preview" width="700">
+</p>
 
 ## Features
 
