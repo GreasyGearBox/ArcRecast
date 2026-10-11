@@ -21,12 +21,12 @@ ArcRecast is a clean, updated ability recast tracker with a separate alert windo
 
 ## Installation
 
-1. Extract the folder 'arcrecast' and place that folder into your addons folder.
-2. In-game, enter `/addon load arcrecast`.
-3. Use `/arcrecast` to open the configuration window.
-4. Use `/arcrecast help` to see available commands.
 
-Settings are saved automatically.
+1. Download the ZIP from the [latest release](../../releases/latest).
+2. Extract the archive.
+3. Copy the `arcrecast` folder into your Ashita `addons` directory.
+4. In game, load the addon with:
+   `/addon load arcrecast`
 
 ## Notes
 
