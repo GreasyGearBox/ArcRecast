@@ -2,9 +2,9 @@
 
 **Author:** Mr.Bear  
 **Platform:** Ashita 4 · Phoenix XI  
-**Version:** 1.0.3
+**Version:** 1.0.4
 
-ArcRecast is a clean, updated ability recast tracker with a separate alert window that briefly displays the names of abilities as they become available.
+ArcRecast tracks job ability cooldowns and Ninjutsu spell recasts with a separate alert window that briefly displays their names as they become available.
 
 ## Preview
 
@@ -14,7 +14,8 @@ ArcRecast is a clean, updated ability recast tracker with a separate alert windo
 
 ## Features
 
-- **Cooldown Tracker:** Displays ability names, countdown timers, and colored bars representing the time remaining on each cooldown.
+- **Cooldown Tracker:** Displays ability and Ninjutsu spell names, countdown timers, and colored bars representing their remaining recast times.
+- **Ninjutsu Spells:** Optional tracking for all Ninjutsu recasts (including Utsusemi, elemental, and enfeebling spells), using Ashita's live spell timers.
 - **Reverse Countdown:** At 20 seconds remaining, the draining bar reverses direction and begins filling until the ability is ready.
 - **Ready Alerts:** When an ability comes off cooldown, its name briefly appears in a separate alert window before fading away.
 - **Customizable Layout:** The recast tracker and alert window can be positioned and configured independently.

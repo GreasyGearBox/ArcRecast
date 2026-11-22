@@ -1,7 +1,7 @@
 addon.name='arcrecast'
 addon.author='Mr.Bear'
-addon.version='1.0.3'
-addon.desc='ArcRecast: standalone ability cooldowns and ready notifications for Ashita v4.'
+addon.version='1.0.4'
+addon.desc='ArcRecast: ability and Ninjutsu recasts with ready notifications for Ashita v4.'
 require('common')
 local imgui=require('imgui')
 local settings=require('settings')
@@ -14,7 +14,7 @@ local cooldownJob=nil
 local readyNotices={}
 local readyBoxWidth=380
 local readyBoxHeight=64
-local defaults=T{enabled=true,showReadyBox=true,readyBoxX=.5,readyBoxY=.58,readyBoxTextSize=36,readyBoxLinger=1.5,readyBoxFade=.5,readyBoxStrength=.5,cooldownBuffer=25,showCooldowns=true,cooldownX=.96,cooldownY=.08,cooldownScale=1.5,cooldownWidth=150,cooldownTextSize=24,cooldownBarThickness=5,cooldownRowGap=12,cooldownFade=.5,cooldownReadyLinger=1.5,cooldownPulseStrength=.25,cooldownRed=T{.94,.25,.29,1},cooldownYellow=T{.91,.78,.42,1},cooldownGreen=T{.40,.82,.55,1}}
+local defaults=T{enabled=true,showReadyBox=true,readyBoxX=.5,readyBoxY=.58,readyBoxTextSize=36,readyBoxLinger=1.5,readyBoxFade=.5,readyBoxStrength=.5,cooldownBuffer=25,trackNinjutsu=true,showCooldowns=true,cooldownX=.96,cooldownY=.08,cooldownScale=1.5,cooldownWidth=150,cooldownTextSize=24,cooldownBarThickness=5,cooldownRowGap=12,cooldownFade=.5,cooldownReadyLinger=1.5,cooldownPulseStrength=.25,cooldownRed=T{.94,.25,.29,1},cooldownYellow=T{.91,.78,.42,1},cooldownGreen=T{.40,.82,.55,1}}
 local cfg=settings.load(defaults)
 cfg.cooldownWidth=math.max(40,math.min(300,tonumber(cfg.cooldownWidth) or 150))
 settings.register('settings','arcrecast_settings',function(s)
@@ -96,19 +96,23 @@ local function drawReadyBox(dl,w,h,now)
 end
 local function drawCooldowns(dl,w,h,manager,player)
     if not cfg.showCooldowns and not cfg.showReadyBox then cooldownState=cooldowns.new();cooldownRows={};readyNotices={};return end
-    local job=player:GetMainJob()
+    local job=string.format('%d:%d',player:GetMainJob(),player:GetSubJob())
     if cooldownJob~=job then readyNotices={};cooldownState=cooldowns.new();cooldownJob=job end
     local active={}
     if preview then
         local examples={{'Meditate',135},{'Third Eye',42},{'Hasso',18},{'Seigan',6}}
         for i,e in ipairs(examples) do
             local ok,a=pcall(function() return AshitaCore:GetResourceManager():GetAbilityByName(e[1],2) end)
-            active[i]={timer=i,id=ok and a and a.Id or 0,name=e[1],remaining=e[2]}
+            active[i]={key='ability:'..i,timer=i,id=ok and a and a.Id or 0,name=e[1],remaining=e[2]}
+        end
+        if cfg.trackNinjutsu then
+            active[#active+1]={key='spell:preview-1',id=338,name='Utsusemi: Ni',remaining=27}
+            active[#active+1]={key='spell:preview-2',id=321,name='Katon: Ni',remaining=12}
         end
     else
         if manager.GetRecast then
             local recast=manager:GetRecast()
-            if recast then active=cooldowns.read(recast,AshitaCore:GetResourceManager(),player) end
+            if recast then active=cooldowns.read(recast,AshitaCore:GetResourceManager(),player,cfg.trackNinjutsu) end
         end
     end
     cooldownRows=cooldowns.update(cooldownState,active,os.clock(),cfg.cooldownFade,cfg.cooldownReadyLinger,cfg.cooldownBuffer/100)
@@ -116,8 +120,8 @@ local function drawCooldowns(dl,w,h,manager,player)
     if not preview and cfg.showReadyBox then
         for _,e in ipairs(cooldownRows) do
             if e.justReady then
-                for i=#readyNotices,1,-1 do if readyNotices[i].id==e.id then table.remove(readyNotices,i) end end
-                readyNotices[#readyNotices+1]={id=e.id,name=e.name,at=now}
+                for i=#readyNotices,1,-1 do if readyNotices[i].key==e.key then table.remove(readyNotices,i) end end
+                readyNotices[#readyNotices+1]={key=e.key,name=e.name,at=now}
                 if #readyNotices>6 then table.remove(readyNotices,1) end
             end
         end
@@ -185,7 +189,13 @@ local function slider(label,key,lo,hi,format)
     end
 end
 local function checkbox(label,key)
-    local value={cfg[key]}; if imgui.Checkbox(label,value) then cfg[key]=value[1] end
+    local value={cfg[key]}
+    if imgui.Checkbox(label,value) then
+        cfg[key]=value[1]
+        if key=='trackNinjutsu' then
+            cooldownState=cooldowns.new();cooldownRows={};readyNotices={}
+        end
+    end
 end
 local function section(label)
     if imgui.CollapsingHeader then return imgui.CollapsingHeader(label) end
@@ -204,6 +214,7 @@ local function configWindow()
         if imgui.BeginTabBar('ArcRecastTabs') then
             if imgui.BeginTabItem('Cooldowns') then
                 checkbox('Show cooldown list','showCooldowns')
+                checkbox('Track Ninjutsu spells','trackNinjutsu')
                 if cfg.showCooldowns then
                     slider('Overall size','cooldownScale',.1,4)
                     slider('Text size','cooldownTextSize',6,60,'%.0f')
@@ -231,7 +242,7 @@ local function configWindow()
                     slider('Notice text size','readyBoxTextSize',12,100,'%.0f')
                     slider('Linger (seconds)','readyBoxLinger',0,5)
                     slider('Fade out (seconds)','readyBoxFade',0,2)
-                    imgui.TextWrapped('Shows +AbilityName when a cooldown finishes. Multiple notices stack. The box hides when empty and works with the cooldown list hidden.')
+                    imgui.TextWrapped('Shows +AbilityName or +SpellName when a recast finishes. Multiple notices stack. The box hides when empty and works with the cooldown list hidden.')
                     if section('Position') then slider('Notice position X','readyBoxX',0,1);slider('Notice position Y','readyBoxY',0,1) end
                 end
                 imgui.EndTabItem()
@@ -262,7 +273,7 @@ local function dragLayout(w,h)
         local line=cfg.cooldownTextSize
         local rows=math.max(1,#cooldownRows)
         local width=math.max(clamp(cfg.cooldownWidth,40,300)*cs,cooldownLayoutWidth)
-        handle('cooldowns','ABILITY COOLDOWNS',cfg.cooldownX*w-width,cfg.cooldownY*h,
+        handle('cooldowns','ABILITY AND SPELL COOLDOWNS',cfg.cooldownX*w-width,cfg.cooldownY*h,
             width,rows*(line+cfg.cooldownBarThickness+cfg.cooldownRowGap+5)*cs,'cooldownX','cooldownY')
     end
     if cfg.showReadyBox then

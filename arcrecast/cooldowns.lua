@@ -11,14 +11,16 @@ function M.update(state,active,now,fade,linger,buffer)
     for _,e in pairs(state.entries) do e.justReady=false end
     local seen={}
     for _,a in ipairs(active) do
-        if a.remaining>0 and not seen[a.timer] then
-            seen[a.timer]=true
-            local e=state.entries[a.timer]
+        -- Ability timer IDs and spell recast indices use separate namespaces.
+        local key=a.key or a.timer
+        if key~=nil and a.remaining>0 and not seen[key] then
+            seen[key]=true
+            local e=state.entries[key]
             if not e or e.finished then
                 state.sequence=state.sequence+1
-                e={order=state.sequence};state.entries[a.timer]=e
+                e={order=state.sequence};state.entries[key]=e
             end
-            e.name=a.name;e.id=a.id;e.remaining=a.remaining
+            e.key=key;e.name=a.name;e.id=a.id;e.remaining=a.remaining
             e.finished=nil;e.ready=false;e.pulse=0;e.alpha=1
             e.fraction=M.fraction(a.remaining,buffer)
         end
@@ -52,7 +54,28 @@ function M.phase(seconds)
     if seconds<60 then return 'yellow' end
     return 'red'
 end
-function M.read(recast,resources,player)
+-- Cache Ninjutsu resources, but retry later if game resources are not yet loaded.
+-- Spell.Skill 39 is Ninjutsu; spell.Index is the recast-array index.
+local ninjutsuSpells=nil
+local function getNinjutsuSpells(resources)
+    if ninjutsuSpells then return ninjutsuSpells end
+    local found,seen={},{}
+    for id=1,1024 do
+        local spell=resources:GetSpellById(id)
+        if spell and spell.Skill==39 then
+            local index=spell.Index
+            local name=spell.Name and spell.Name[1]
+            if type(index)=='number' and index>=0 and index<=1024 and
+               type(name)=='string' and name~='' and name~='Unknown' and not seen[index] then
+                seen[index]=true
+                found[#found+1]={index=index,id=id,name=name}
+            end
+        end
+    end
+    if #found>0 then ninjutsuSpells=found end
+    return found
+end
+function M.read(recast,resources,player,trackNinjutsu)
     local result={}
     for slot=0,31 do
         local timer=recast:GetAbilityTimerId(slot)
@@ -65,7 +88,20 @@ function M.read(recast,resources,player)
                 a=resources:GetAbilityById(twohour[player:GetMainJob()] or 0)
             end
             if a and a.Name and a.Name[1] and a.Name[1]~='' and a.Name[1]~='Unknown' then
-                result[#result+1]={timer=timer,id=a.Id,name=a.Name[1],remaining=ticks/60}
+                result[#result+1]={key='ability:'..timer,timer=timer,id=a.Id,name=a.Name[1],remaining=ticks/60}
+            end
+        end
+    end
+    if trackNinjutsu then
+        for _,spell in ipairs(getNinjutsuSpells(resources)) do
+            local ticks=recast:GetSpellTimer(spell.index)
+            if ticks>0 then
+                result[#result+1]={
+                    key='spell:'..spell.index,
+                    id=spell.id,
+                    name=spell.name,
+                    remaining=ticks/60,
+                }
             end
         end
     end
